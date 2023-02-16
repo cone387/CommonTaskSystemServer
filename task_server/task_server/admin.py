@@ -9,6 +9,10 @@ apps_order_dict = {app: index for index, app in enumerate(apps_order_list)}
 # 自定义网站APP显示顺序
 class CommonTaskAdminSite(admin.AdminSite):
 
+    site_title = '任务管理'
+    site_id = 1
+    default_site = 'task_server.admin.CommonTaskAdminSite'
+
     def index(self, request, extra_context=None):
         if extra_context is None:
             extra_context = {}

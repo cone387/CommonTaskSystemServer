@@ -4,6 +4,8 @@ from django.db import models
 from .choices import TaskStatus, TaskScheduleStatus, TaskScheduleType, TaskCallbackStatus
 from common_objects.models import CommonTag, CommonCategory
 from common_objects import fields as common_fields
+from utils.cron_utils import get_next_cron_time
+from datetime import datetime, timedelta
 
 
 UserModel = get_user_model()
@@ -15,7 +17,7 @@ class Task(models.Model):
                                null=True, blank=True, verbose_name='父任务')
     name = models.CharField(max_length=100, verbose_name='任务名')
     category = models.ForeignKey(CommonCategory, db_constraint=False, on_delete=models.DO_NOTHING, verbose_name='类别')
-    tags = models.ManyToManyField(CommonTag, db_constraint=False, verbose_name='标签')
+    tags = models.ManyToManyField(CommonTag, blank=True, db_constraint=False, verbose_name='标签')
     description = models.TextField(blank=True, null=True, verbose_name='描述')
     config = common_fields.ConfigField(default=common_fields.get_default_config('Task'),
                                        blank=True, null=True, verbose_name='参数')
@@ -39,6 +41,7 @@ class Task(models.Model):
 class TaskCallback(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, verbose_name='回调')
+    description = models.TextField(blank=True, null=True, verbose_name='描述')
     status = common_fields.CharField(default=TaskCallbackStatus.ENABLE.value, verbose_name='状态',
                                      choices=TaskCallbackStatus.choices)
     config = common_fields.ConfigField(default=common_fields.get_default_config('TaskCallback'), blank=True, null=True,
@@ -65,8 +68,8 @@ class TaskSchedule(models.Model):
                                    choices=TaskScheduleType.choices)
     crontab = models.CharField(max_length=50, null=True, blank=True, verbose_name='Crontab表达式')
     priority = models.IntegerField(default=0, verbose_name='优先级')
-    next_schedule_time = models.DateTimeField(default=timezone.now, verbose_name='下次运行时间')
-    period = models.IntegerField(default=60, verbose_name='周期(秒)')
+    next_schedule_time = models.DateTimeField(default=timezone.now, verbose_name='下次运行时间', db_index=True)
+    period = models.PositiveIntegerField(default=60, verbose_name='周期(秒)')
     status = common_fields.CharField(default=TaskScheduleStatus.OPENING.value, verbose_name='状态',
                                      choices=TaskScheduleStatus.choices)
     callback = models.ForeignKey(TaskCallback, on_delete=models.CASCADE,
@@ -75,14 +78,33 @@ class TaskSchedule(models.Model):
     create_time = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
+    def generate_next_schedule(self, now=None):
+        now = now or timezone.now()
+        if self.type == TaskScheduleType.CONTINUOUS.value:
+            self.next_schedule_time = now + timedelta(seconds=self.period)
+        elif self.type == TaskScheduleType.CRONTAB.value:
+            self.next_schedule_time = get_next_cron_time(self.crontab, now)
+        else:
+            self.next_schedule_time = datetime.max
+            self.status = TaskScheduleStatus.DONE.value
+        self.save(update_fields=('next_schedule_time', 'status'))
+        return self
+
     class Meta:
         db_table = 'task_schedule'
         verbose_name = verbose_name_plural = '任务计划'
+        ordering = ('-priority', 'next_schedule_time')
 
     def __str__(self):
         return self.task.name
 
     __repr__ = __str__
+
+    def __lt__(self, other):
+        return self.priority < other.priority
+
+    def __gt__(self, other):
+        return self.priority > other.priority
 
 
 class TaskScheduleLog(models.Model):
