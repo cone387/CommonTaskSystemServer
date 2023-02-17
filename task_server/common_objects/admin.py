@@ -23,7 +23,7 @@ class UserAdmin(admin.ModelAdmin):
 class FieldConfigAdmin(UserAdmin):
     form = forms.FieldConfigForm
 
-    list_display = ('id', 'model', 'key', 'value', 'type', 'is_required', 'create_time', 'update_time')
+    list_display = ('id', 'model', 'key', 'value', 'type', 'is_required', 'update_time')
     fields = (
         "model",
         "type",
@@ -34,7 +34,7 @@ class FieldConfigAdmin(UserAdmin):
 
 class CategoryAdmin(UserAdmin):
     form = forms.CategoryForm
-    list_display = ('id', 'model', 'parent', 'name', 'user', 'create_time', 'update_time')
+    list_display = ('id', 'model', 'parent', 'name', 'user', 'update_time')
     fields = (
         ("model", "parent"),
         "name",
@@ -44,7 +44,7 @@ class CategoryAdmin(UserAdmin):
 
 class TagAdmin(UserAdmin):
     form = forms.TagForm
-    list_display = ('id', 'model', 'name', 'user', 'create_time')
+    list_display = ('id', 'model', 'name', 'user', 'update_time')
     fields = (
         "model",
         "name",

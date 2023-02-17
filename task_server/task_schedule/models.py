@@ -1,10 +1,11 @@
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import models
-from .choices import TaskStatus, TaskScheduleStatus, TaskScheduleType, TaskCallbackStatus
+from .choices import TaskStatus, TaskScheduleStatus, TaskScheduleType, TaskCallbackStatus, TaskCallbackEvent
 from common_objects.models import CommonTag, CommonCategory
 from common_objects import fields as common_fields
 from utils.cron_utils import get_next_cron_time
+from utils import foreign_key
 from datetime import datetime, timedelta
 
 
@@ -27,6 +28,10 @@ class Task(models.Model):
     create_time = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
+    @property
+    def associated_tasks_ids(self):
+        return foreign_key.get_related_object_ids(self)
+
     class Meta:
         db_table = 'taskhub'
         verbose_name = verbose_name_plural = '任务中心'
@@ -38,10 +43,12 @@ class Task(models.Model):
     __repr__ = __str__
 
 
-class TaskCallback(models.Model):
+class TaskScheduleCallback(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, verbose_name='回调')
     description = models.TextField(blank=True, null=True, verbose_name='描述')
+    trigger_event = common_fields.CharField(default=TaskCallbackEvent.DONE, choices=TaskCallbackEvent.choices,
+                                            verbose_name='触发事件')
     status = common_fields.CharField(default=TaskCallbackStatus.ENABLE.value, verbose_name='状态',
                                      choices=TaskCallbackStatus.choices)
     config = common_fields.ConfigField(default=common_fields.get_default_config('TaskCallback'), blank=True, null=True,
@@ -51,7 +58,7 @@ class TaskCallback(models.Model):
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
-        db_table = 'task_callback'
+        db_table = 'task_schedule_callback'
         verbose_name = verbose_name_plural = '任务回调'
         unique_together = ('name', 'user')
 
@@ -72,7 +79,7 @@ class TaskSchedule(models.Model):
     period = models.PositiveIntegerField(default=60, verbose_name='周期(秒)')
     status = common_fields.CharField(default=TaskScheduleStatus.OPENING.value, verbose_name='状态',
                                      choices=TaskScheduleStatus.choices)
-    callback = models.ForeignKey(TaskCallback, on_delete=models.CASCADE,
+    callback = models.ForeignKey(TaskScheduleCallback, on_delete=models.CASCADE,
                                  null=True, blank=True, db_constraint=False, verbose_name='回调')
     user = models.ForeignKey(UserModel, on_delete=models.CASCADE, db_constraint=False, verbose_name='用户')
     create_time = models.DateTimeField(default=timezone.now, verbose_name='创建时间')

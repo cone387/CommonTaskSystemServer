@@ -23,3 +23,8 @@ class TaskCallbackStatus(TextChoices):
     ENABLE = 'E', '启用'
     DISABLE = 'D', '禁用'
 
+
+class TaskCallbackEvent(TextChoices):
+    SUCCEED = 'S', '成功'
+    FAILED = 'F', '失败'
+    DONE = 'D', '完成'

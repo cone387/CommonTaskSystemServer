@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.deconstruct import deconstructible
-
+from utils import foreign_key
 from .choices import CommonFieldConfigType
 from . import validator
 
@@ -16,7 +16,7 @@ class ConfigField(models.JSONField):
 
     def clean(self, value, model_instance):
         value = super().clean(value, model_instance)
-        queryset = CommonFieldConfig.objects.filter(model=model_instance)
+        queryset = CommonFieldConfig.objects.filter(model=model_instance.__class__.__name__)
         model_fields = {field.key: field for field in queryset}
         for k, v in value.items():
             model_filed = model_fields.get(k)
@@ -70,11 +70,15 @@ class CommonCategory(models.Model):
     model = models.CharField(max_length=30, verbose_name='所属模型')
     parent = models.ForeignKey('self', blank=True, null=True, db_constraint=False, on_delete=models.CASCADE,
                                related_name='children', verbose_name='父类别')
-    name = models.CharField(max_length=50, verbose_name='类别')
+    name = models.CharField(max_length=50, verbose_name='名称')
     config = ConfigField(default=get_default_config('CommonCategory'), blank=True, null=True, verbose_name='详细')
     user = models.ForeignKey(UserModel, on_delete=models.CASCADE, db_constraint=False, verbose_name='用户')
     create_time = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    @property
+    def associated_categories_ids(self):
+        return foreign_key.get_related_object_ids(self)
 
     class Meta:
         db_table = 'common_category'

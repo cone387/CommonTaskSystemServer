@@ -1,9 +1,11 @@
 from django.contrib import admin
 from common_objects.admin import UserAdmin
+from collections import OrderedDict
 from . import models, forms
 
 
 class TaskAdmin(UserAdmin):
+    form = forms.TaskForm
     list_display = ('id', 'parent', 'name', 'category', 'status', 'user', 'update_time')
     fields = (
         ("parent", 'category',),
@@ -16,12 +18,14 @@ class TaskAdmin(UserAdmin):
     filter_horizontal = ('tags',)
 
 
-class TaskCallbackAdmin(UserAdmin):
+class TaskScheduleCallbackAdmin(UserAdmin):
     list_display = ('id', 'name', 'status', 'user', 'update_time')
     fields = (
-        ("name", "status",),
-        'description',
+        "name",
+        ("trigger_event", "status",),
         "config",
+        'description',
+
     )
 
 
@@ -55,5 +59,5 @@ class TaskScheduleLogAdmin(UserAdmin):
 
 admin.site.register(models.Task, TaskAdmin)
 admin.site.register(models.TaskSchedule, TaskScheduleAdmin)
-admin.site.register(models.TaskCallback, TaskCallbackAdmin)
+admin.site.register(models.TaskScheduleCallback, TaskScheduleCallbackAdmin)
 admin.site.register(models.TaskScheduleLog, TaskScheduleLogAdmin)

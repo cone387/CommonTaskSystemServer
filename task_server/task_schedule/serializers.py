@@ -44,7 +44,7 @@ class QueueTaskSerializer(TaskSerializer):
 class TaskCallbackSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = models.TaskCallback
+        model = models.TaskScheduleCallback
         exclude = ('update_time', )
 
 

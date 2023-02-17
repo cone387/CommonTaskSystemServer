@@ -10,6 +10,7 @@ apps_order_dict = {app: index for index, app in enumerate(apps_order_list)}
 class CommonTaskAdminSite(admin.AdminSite):
 
     site_title = '任务管理'
+    site_header = '任务管理'
     site_id = 1
     default_site = 'task_server.admin.CommonTaskAdminSite'
 
@@ -26,3 +27,4 @@ class CommonTaskAdminSite(admin.AdminSite):
 
         extra_context['app_list'] = app_list
         return super(CommonTaskAdminSite, self).index(request, extra_context)
+

@@ -1,6 +1,18 @@
 from django import forms
 from .choices import TaskScheduleType
-from utils import cron_utils
+from utils import cron_utils, foreign_key
+from . import models
+
+
+class TaskForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(TaskForm, self).__init__(*args, **kwargs)
+        task: models.Task = self.instance
+        if task.id:
+            self.fields['parent'].queryset = models.Task.objects.filter(
+                user=task.user
+            ).exclude(id__in=foreign_key.get_related_object_ids(task))
 
 
 class TaskScheduleForm(forms.ModelForm):

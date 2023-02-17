@@ -6,5 +6,6 @@ urlpatterns = [
     path('task/<int:pk>/', views.TaskDetailView.as_view()),
     path('schedule/', views.TaskScheduleListView.as_view()),
     path('schedule/<int:pk>/', views.TaskScheduleDetailView.as_view()),
-    path('schedule/queue/', views.TaskScheduleQueueAPI.as_view()),
+    path('schedule/queue/next/', views.TaskScheduleQueueAPI.get),
+    path('schedule/queue/', views.TaskScheduleQueueAPI.size),
 ]
