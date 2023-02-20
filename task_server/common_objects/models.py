@@ -16,7 +16,8 @@ class ConfigField(models.JSONField):
 
     def clean(self, value, model_instance):
         value = super().clean(value, model_instance)
-        queryset = CommonFieldConfig.objects.filter(model=model_instance.__class__.__name__)
+        model = '%s.%s' % (model_instance.__class__.__name__, model_instance.__class__._meta.verbose_name)
+        queryset = CommonFieldConfig.objects.filter(model=model)
         model_fields = {field.key: field for field in queryset}
         for k, v in value.items():
             model_filed = model_fields.get(k)
@@ -57,7 +58,7 @@ class CommonFieldConfig(models.Model):
 
     class Meta:
         db_table = 'common_field_config'
-        verbose_name_plural = verbose_name = '字段配置'
+        verbose_name_plural = verbose_name = '通用配置'
 
     def __str__(self):
         return self.key
@@ -82,7 +83,7 @@ class CommonCategory(models.Model):
 
     class Meta:
         db_table = 'common_category'
-        verbose_name = verbose_name_plural = '任务类别'
+        verbose_name = verbose_name_plural = '通用类别'
         unique_together = ('user', 'name', 'parent')
 
     def __str__(self):
@@ -102,7 +103,7 @@ class CommonTag(models.Model):
 
     class Meta:
         db_table = 'common_tag'
-        verbose_name = verbose_name_plural = '任务标签'
+        verbose_name = verbose_name_plural = '通用标签'
         unique_together = ('user', 'name')
 
     def __str__(self):

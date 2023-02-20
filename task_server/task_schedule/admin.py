@@ -1,12 +1,14 @@
 from django.contrib import admin
+from django.utils.html import format_html
+from .choices import TaskScheduleType
 from common_objects.admin import UserAdmin
-from collections import OrderedDict
+from django.db.models import Q, Count
 from . import models, forms
 
 
 class TaskAdmin(UserAdmin):
     form = forms.TaskForm
-    list_display = ('id', 'parent', 'name', 'category', 'status', 'user', 'update_time')
+    list_display = ('id', 'admin_parent', 'name', 'category', 'admin_status', 'schedules', 'update_time')
     fields = (
         ("parent", 'category',),
         ("name", "status",),
@@ -16,6 +18,37 @@ class TaskAdmin(UserAdmin):
 
     )
     filter_horizontal = ('tags',)
+    list_filter = ('category', 'tags', 'parent')
+
+    def __init__(self, *args, **kwargs):
+        super(TaskAdmin, self).__init__(*args, **kwargs)
+        self.extra_context = {'schedules': {}}
+
+    def admin_parent(self, obj):
+        if obj.parent:
+            return format_html('<a href="/admin/task_schedule/task/%s/change/">%s</a>' % (obj.parent.id, obj.parent))
+        return '-'
+    admin_parent.short_description = '父任务'
+
+    def admin_status(self, obj):
+        return bool(obj.status)
+    admin_status.boolean = True
+    admin_status.short_description = '状态'
+
+    def schedules(self, obj):
+        schedules = self.extra_context['schedules'].get(obj.id, 0)
+        if schedules:
+            return format_html('<a href="/admin/task_schedule/taskschedule/?task__id__exact=%s">查看(%s)</a>'
+                               % (obj.id, schedules))
+        return '-'
+    schedules.short_description = '任务计划'
+    
+    def changelist_view(self, request, extra_context=None):
+        queryset = self.get_queryset(request)
+        schedules = models.TaskSchedule.objects.filter(task__in=queryset,).values('task__id'
+                                                                                  ).annotate(Count('task__id'))
+        self.extra_context['schedules'] = {x['task__id']: x['task__id__count'] for x in schedules}
+        return super(TaskAdmin, self).changelist_view(request, extra_context=self.extra_context)
 
 
 class TaskScheduleCallbackAdmin(UserAdmin):
@@ -30,7 +63,8 @@ class TaskScheduleCallbackAdmin(UserAdmin):
 
 
 class TaskScheduleAdmin(UserAdmin):
-    list_display = ('id', 'task', 'type', 'crontab', 'next_schedule_time', 'period', 'status', 'user', 'update_time')
+    list_display = ('id', 'admin_task', 'type', 'crontab', 'next_schedule_time',
+                    'admin_period', 'admin_status', 'logs', 'update_time')
     fields = (
         ("task", "status"),
         ("type", 'priority'),
@@ -39,6 +73,25 @@ class TaskScheduleAdmin(UserAdmin):
         'callback'
     )
     form = forms.TaskScheduleForm
+
+    def admin_task(self, obj):
+        return format_html('<a href="/admin/task_schedule/task/%s/change/">%s</a>' % (obj.task.id, obj.task.name))
+    admin_task.short_description = '任务'
+
+    def logs(self, obj):
+        return format_html('<a href="/admin/task_schedule/taskschedulelog/?schedule__id__exact=%s">查看</a>' % obj.id)
+    logs.short_description = '日志'
+
+    def admin_status(self, obj):
+        return bool(obj.status)
+    admin_status.boolean = True
+    admin_status.short_description = '状态'
+
+    def admin_period(self, obj):
+        if obj.type != TaskScheduleType.CONTINUOUS:
+            return '-'
+        return obj.period
+    admin_period.short_description = '周期'
 
     class Media:
         js = (

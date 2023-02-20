@@ -1,15 +1,15 @@
 from django import forms
-from .choices import SystemModelChoices
+from .choices import CategoryModelChoices, TagModelChoices, FieldConfigModelChoices
 from .models import CommonCategory
 from utils import foreign_key
 
 
 class FieldConfigForm(forms.ModelForm):
-    model = forms.ChoiceField(choices=SystemModelChoices.choices, label="所属模型", required=True)
+    model = forms.ChoiceField(choices=FieldConfigModelChoices.choices, label="所属模型", required=True)
 
 
 class CategoryForm(forms.ModelForm):
-    model = forms.ChoiceField(choices=SystemModelChoices.choices, label="所属模型", required=True)
+    model = forms.ChoiceField(choices=CategoryModelChoices.choices, label="所属模型", required=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,4 +25,4 @@ class CategoryForm(forms.ModelForm):
 
 
 class TagForm(forms.ModelForm):
-    model = forms.ChoiceField(choices=SystemModelChoices.choices, label="所属模型", required=True)
+    model = forms.ChoiceField(choices=TagModelChoices.choices, label="所属模型", required=True)
