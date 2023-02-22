@@ -1,3 +1,4 @@
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.request import HttpRequest
 from rest_framework.response import Response
@@ -53,10 +54,19 @@ class TaskScheduleQueueAPI:
             if schedules:
                 schedule = schedules.first()
         except Exception as e:
-            return Response({'error': str(e)})
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         if schedule:
             return Response(serializers.QueueScheduleSerializer(schedule).data)
-        return Response({'msg': 'no schedule to run'})
+        return Response({'msg': 'no schedule to run'}, status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @api_view(['GET'])
+    def get_by_id(request, pk):
+        try:
+            schedule = TaskSchedule.objects.get(id=pk)
+            return Response(serializers.QueueScheduleSerializer(schedule).data)
+        except TaskSchedule.DoesNotExist:
+            return Response({'msg': 'schedule not found'}, status=status.HTTP_404_NOT_FOUND)
 
     @staticmethod
     @api_view(['GET'])

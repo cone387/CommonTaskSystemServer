@@ -16,8 +16,7 @@ class ConfigField(models.JSONField):
 
     def clean(self, value, model_instance):
         value = super().clean(value, model_instance)
-        model = '%s.%s' % (model_instance.__class__.__name__, model_instance.__class__._meta.verbose_name)
-        queryset = CommonFieldConfig.objects.filter(model=model)
+        queryset = CommonFieldConfig.objects.filter(model=model_instance.__class__._meta.label)
         model_fields = {field.key: field for field in queryset}
         for k, v in value.items():
             model_filed = model_fields.get(k)

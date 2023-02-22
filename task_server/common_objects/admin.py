@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, ForeignKey
 from django.utils.html import format_html
 from . import models
 from . import forms
@@ -78,10 +78,15 @@ class CategoryAdmin(UserAdmin):
             x: models.models.Model
             m = "%s.%s" % (x._meta.app_label, x.__name__)
             x_categories = models_categories.get(m, [])
+            column = None
+            for f in x._meta.get_fields():
+                if f.__class__ == ForeignKey and f.related_model == models.CommonCategory:
+                    column = f.name + '__id'
+                    break
+            params = {column + '__in': x_categories}
             if x_categories:
-                model_queryset = x.objects.filter(category__id__in=x_categories
-                                                  ).values('category__id').annotate(Count('category__id'))
-                self.extra_context['models'][m] = {x['category__id']: x['category__id__count'] for x in model_queryset}
+                model_queryset = x.objects.filter(**params).values(column).annotate(Count(column))
+                self.extra_context['models'][m] = {x[column]: x[column + '__count'] for x in model_queryset}
         return super().changelist_view(request, extra_context=self.extra_context)
 
 

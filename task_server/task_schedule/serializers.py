@@ -38,7 +38,7 @@ class QueueTaskSerializer(TaskSerializer):
 
     class Meta:
         model = models.Task
-        fields = ('id', 'name', 'config', 'status', 'parent', )
+        fields = ('id', 'name', 'config', 'category', 'status', 'parent', )
 
 
 class TaskCallbackSerializer(serializers.ModelSerializer):
