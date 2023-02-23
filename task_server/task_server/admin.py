@@ -1,5 +1,6 @@
 
 from django.contrib import admin
+from collections import OrderedDict
 
 
 apps_order_list = ['common_objects', 'task_schedule', 'auth']
@@ -11,20 +12,15 @@ class CommonTaskAdminSite(admin.AdminSite):
 
     site_title = '任务管理'
     site_header = '任务管理'
-    site_id = 1
-    default_site = 'task_server.admin.CommonTaskAdminSite'
 
-    def index(self, request, extra_context=None):
-        if extra_context is None:
-            extra_context = {}
+    def __init__(self, *args, **kwargs):
+        super(CommonTaskAdminSite, self).__init__(*args, **kwargs)
+        self._registry = OrderedDict()
 
-        app_list = self.get_app_list(request)
-        # app_dict = self._build_app_dict(request)
-        # https://stackoverflow.com/questions/15650348/sorting-a-list-of-dictionaries-based-on-the-order-of-values-of-another-list
-        # https://docs.python.org/3/howto/sorting.html
-        # https://lvii.github.io/code/2018-11-21-sort-django-admin-index-dashboard-app-list-by-an-ordered-list/
-        app_list.sort(key=lambda element_dict: apps_order_dict[element_dict["app_label"]])
-
-        extra_context['app_list'] = app_list
-        return super(CommonTaskAdminSite, self).index(request, extra_context)
-
+    def get_app_list(self, request, app_label=None):
+        app_dict = self._build_app_dict(request, app_label)
+        app_list = sorted(app_dict.values(), key=lambda x: apps_order_dict[x["app_label"]])
+        # Sort the models alphabetically within each app.
+        # for app in app_list:
+        #     app["models"].sort(key=lambda x: x["name"])
+        return app_list
