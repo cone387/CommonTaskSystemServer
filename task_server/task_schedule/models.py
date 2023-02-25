@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import models
 from .choices import TaskStatus, TaskScheduleStatus, TaskScheduleType, TaskCallbackStatus, TaskCallbackEvent
-from common_objects.models import CommonTag, CommonCategory
+from common_objects.models import CommonTag, CommonCategory, get_default_config
 from common_objects import fields as common_fields
 from utils.cron_utils import get_next_cron_time
 from utils import foreign_key
@@ -20,7 +20,7 @@ class Task(models.Model):
     category = models.ForeignKey(CommonCategory, db_constraint=False, on_delete=models.DO_NOTHING, verbose_name='类别')
     tags = models.ManyToManyField(CommonTag, blank=True, db_constraint=False, verbose_name='标签')
     description = models.TextField(blank=True, null=True, verbose_name='描述')
-    config = common_fields.ConfigField(default=common_fields.get_default_config('Task'),
+    config = common_fields.ConfigField(default=get_default_config('Task'),
                                        blank=True, null=True, verbose_name='参数')
     status = common_fields.CharField(max_length=1, default=TaskStatus.ENABLE.value, verbose_name='状态',
                                      choices=TaskStatus.choices)
@@ -51,7 +51,7 @@ class TaskScheduleCallback(models.Model):
                                             verbose_name='触发事件')
     status = common_fields.CharField(default=TaskCallbackStatus.ENABLE.value, verbose_name='状态',
                                      choices=TaskCallbackStatus.choices)
-    config = common_fields.ConfigField(default=common_fields.get_default_config('TaskCallback'), blank=True, null=True,
+    config = common_fields.ConfigField(default=get_default_config('TaskCallback'), blank=True, null=True,
                                        verbose_name='参数')
     user = models.ForeignKey(UserModel, on_delete=models.CASCADE, db_constraint=False, verbose_name='用户')
     create_time = models.DateTimeField(default=timezone.now, verbose_name='创建时间')

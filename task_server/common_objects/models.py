@@ -1,36 +1,16 @@
-import json
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from django.utils.deconstruct import deconstructible
 from utils import foreign_key
 from .choices import CommonFieldConfigType
-from . import validator
+from .fields import ConfigField
+from .widgets import JSONWidget
+from django.contrib.admin.options import FORMFIELD_FOR_DBFIELD_DEFAULTS
+from django.forms import fields as _form_fields
+from django.utils.deconstruct import deconstructible
 
 
 UserModel = get_user_model()
-
-
-class ConfigField(models.JSONField):
-    _default_json_encoder = json.JSONEncoder(allow_nan=False, indent=4)
-
-    def clean(self, value, model_instance):
-        value = super().clean(value, model_instance)
-        queryset = CommonFieldConfig.objects.filter(model=model_instance.__class__._meta.label)
-        model_fields = {field.key: field for field in queryset}
-        for k, v in value.items():
-            model_filed = model_fields.get(k)
-            validator.is_not_empty(model_filed, f'字段{k}不存在')
-            validator.is_false(model_filed.is_required and not v, f'字段{k}不能为空')
-            if model_filed.type == CommonFieldConfigType.INT:
-                validator.is_int(f'字段{k}必须为整数')
-            elif model_filed.type == CommonFieldConfigType.FLOAT:
-                validator.is_float(f'字段{k}必须为浮点数')
-            elif model_filed.type == CommonFieldConfigType.LIST:
-                validator.is_list(f'字段{k}必须为列表')
-            elif model_filed.type == CommonFieldConfigType.DICT:
-                validator.is_dict(f'字段{k}必须为字典')
-        return value
 
 
 @deconstructible
@@ -77,7 +57,7 @@ class CommonCategory(models.Model):
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     @property
-    def associated_categories_ids(self):
+    def related_categories_ids(self):
         return foreign_key.get_related_object_ids(self)
 
     class Meta:
@@ -109,3 +89,14 @@ class CommonTag(models.Model):
         return self.name
 
     __repr__ = __str__
+
+
+class FiledConfigFiled(_form_fields.JSONField):
+    pass
+
+
+FORMFIELD_FOR_DBFIELD_DEFAULTS[ConfigField] = {
+    "widget": JSONWidget,
+    "form_class": FiledConfigFiled
+}
+

@@ -4,7 +4,7 @@ from django.db.models import Count, ForeignKey
 from django.utils.html import format_html
 from . import models
 from . import forms
-from .choices import CategoryModelChoices, TagModelChoices, FieldConfigModelChoices
+from .choices import CategoryModelChoices, TagModelChoices
 
 UserModel = get_user_model()
 
