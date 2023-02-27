@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='common-task-system',
     packages=find_packages(),
-    version='1.0.0',
+    version='1.0.1',
     install_requires=[
         "django>=3.2.18",
         "croniter>=1.3.8",

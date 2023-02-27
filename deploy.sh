@@ -121,6 +121,7 @@ then
     echo 'twine does not exists, start to install twine'
     pip install twine
   fi
+  rm -rf ./dist/*
   python setup.py sdist
   twine upload dist/*
   exit 0
