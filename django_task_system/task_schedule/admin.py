@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .choices import TaskScheduleType
-from common_objects.admin import UserAdmin
-from django.db.models import Q, Count
+from django_task_system.common_objects.admin import UserAdmin
+from django.db.models import Count
 from . import models, forms
 
 

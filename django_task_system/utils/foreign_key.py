@@ -1,5 +1,5 @@
 from django.db.models import Model
-from utils import algorithm
+from . import algorithm
 
 
 def get_related_object_ids(obj: Model):

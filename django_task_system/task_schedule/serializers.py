@@ -1,5 +1,5 @@
 from . import models
-from common_objects.serializers import CommonCategorySerializer, CommonTagSerializer, CommonFieldConfigSerializer
+from django_task_system.common_objects.serializers import CommonCategorySerializer, CommonTagSerializer
 from rest_framework import serializers
 
 """

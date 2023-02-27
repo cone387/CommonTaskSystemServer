@@ -1,6 +1,6 @@
 from django import forms
 from .choices import TaskScheduleType
-from utils import cron_utils, foreign_key
+from django_task_system.utils import cron_utils, foreign_key
 from . import models
 
 
