@@ -2,11 +2,12 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import models
 from .choices import TaskStatus, TaskScheduleStatus, TaskScheduleType, TaskCallbackStatus, TaskCallbackEvent
-from django_task_system.common_objects.models import CommonTag, CommonCategory, get_default_config
-from django_task_system.common_objects import fields as common_fields
-from django_task_system.utils.cron_utils import get_next_cron_time
-from django_task_system.utils import foreign_key
+from common_objects.models import CommonTag, CommonCategory, get_default_config
+from common_objects import fields as common_fields
+from utils.cron_utils import get_next_cron_time
+from utils import foreign_key
 from datetime import datetime, timedelta
+from . import fields
 
 
 __all__ = ['Task', 'TaskSchedule', 'TaskScheduleCallback', 'TaskScheduleLog']
@@ -76,10 +77,9 @@ class TaskSchedule(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, db_constraint=False, verbose_name='任务')
     type = common_fields.CharField(default=TaskScheduleType.CONTINUOUS.value, verbose_name='计划类型',
                                    choices=TaskScheduleType.choices)
-    crontab = models.CharField(max_length=50, null=True, blank=True, verbose_name='Crontab表达式')
     priority = models.IntegerField(default=0, verbose_name='优先级')
     next_schedule_time = models.DateTimeField(default=timezone.now, verbose_name='下次运行时间', db_index=True)
-    period = models.PositiveIntegerField(default=60, verbose_name='周期(秒)')
+    config = fields.ScheduleConfigField(default=dict, verbose_name='参数')
     status = common_fields.CharField(default=TaskScheduleStatus.OPENING.value, verbose_name='状态',
                                      choices=TaskScheduleStatus.choices)
     callback = models.ForeignKey(TaskScheduleCallback, on_delete=models.CASCADE,

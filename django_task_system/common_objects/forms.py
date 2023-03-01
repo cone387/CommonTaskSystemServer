@@ -1,7 +1,7 @@
 from django import forms
 from .choices import CategoryModelChoices, TagModelChoices, FieldConfigModelChoices
 from .models import CommonCategory
-from ..utils import foreign_key
+from utils import foreign_key
 
 
 class FieldConfigForm(forms.ModelForm):

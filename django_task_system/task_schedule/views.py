@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from . import models, serializers
 from .models import TaskSchedule
 from .choices import TaskScheduleStatus
-from django_task_system.common_objects.rest_view import UserListAPIView, UserRetrieveAPIView
+from common_objects.rest_view import UserListAPIView, UserRetrieveAPIView
 from queue import PriorityQueue, Empty
 from datetime import datetime
 

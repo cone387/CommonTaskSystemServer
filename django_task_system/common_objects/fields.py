@@ -13,7 +13,6 @@ class CharField(models.Field):
         return 'CHAR(%s)' % self.max_length
 
 
-
 class ConfigField(models.JSONField):
     _default_json_encoder = json.JSONEncoder(allow_nan=False, indent=4)
 

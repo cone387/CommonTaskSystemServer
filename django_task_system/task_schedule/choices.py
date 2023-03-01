@@ -15,8 +15,16 @@ class TaskScheduleStatus(TextChoices):
 
 class TaskScheduleType(TextChoices):
     CRONTAB = 'C', 'Crontab'
-    ONETIME = 'O', '一次性'
+    ONCE = 'O', '一次性'
     CONTINUOUS = 'S', '连续性'
+    TIMINGS = 'T', '特定时间'
+
+
+class ScheduleTimingType(TextChoices):
+    DAYS = 'DAYS', '按天'
+    WEEKDAYS = 'WEEKDAYS', '按周'
+    MONTHDAYS = 'MONTHDAYS', '按月'
+    HOURS = 'HOURS', '按小时'
 
 
 class TaskCallbackStatus(TextChoices):
