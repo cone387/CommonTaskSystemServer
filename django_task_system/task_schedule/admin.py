@@ -68,11 +68,12 @@ class TaskScheduleAdmin(UserAdmin):
     fields = (
         ("task", "status"),
         ("type", 'priority'),
-        "timings",
+        ("timings", "timings_period"),
         "weekdays",
+        "timing_time",
         "crontab",
         ("next_schedule_time", "period"),
-        ("date_range_start", "date_range_end",),
+        "date_range",
         'config',
         'callback'
     )
