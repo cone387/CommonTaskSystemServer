@@ -3,17 +3,20 @@ $(document).ready(function () {
   const $crontab = $('.form-row.field-crontab');
   const $nextScheduleTime = $('.fieldBox.field-next_schedule_time');
   const $period = $('.fieldBox.field-period');
-  const $timings = $('.form-row.field-timings.field-timings_period');
+  const $timings = $('.form-row.field-timings_type');
   const $timings_time = $('.form-row.field-timing_time');
   const $weekdays = $('.form-row.field-weekdays');
-  const $timing_type = $('#id_timings');
+  const $timing_type = $('#id_timings_type');
 
   function show_hide_weekdays(){
     const t = $timing_type.val();
+    const $periodUnit = $('#id_period_unit');
     if(t === 'WEEKDAYS'){
       $weekdays.show();
+      $periodUnit.text('周');
     }else{
       $weekdays.hide();
+      $periodUnit.text('天');
     }
   }
 

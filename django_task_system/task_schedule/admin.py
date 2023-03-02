@@ -64,18 +64,21 @@ class TaskScheduleCallbackAdmin(UserAdmin):
 
 class TaskScheduleAdmin(UserAdmin):
     list_display = ('id', 'admin_task', 'type', 'next_schedule_time',
-                    'admin_period', 'admin_status', 'logs', 'update_time')
+                    'admin_status', 'logs', 'update_time')
+
+    readonly_fields = ("config", )
+
     fields = (
         ("task", "status"),
         ("type", 'priority'),
-        ("timings", "timings_period"),
+        ("timings_type",),
         "weekdays",
-        "timing_time",
+        ("timings_period", "timing_time",),
         "crontab",
         ("next_schedule_time", "period"),
-        "date_range",
+        ("date_range_start", "date_range_end"),
+        'callback',
         'config',
-        'callback'
     )
     form = forms.TaskScheduleForm
 
@@ -91,13 +94,6 @@ class TaskScheduleAdmin(UserAdmin):
         return bool(obj.status)
     admin_status.boolean = True
     admin_status.short_description = '状态'
-
-    def admin_period(self, obj):
-        return '-'
-        if obj.type != TaskScheduleType.CONTINUOUS:
-            return '-'
-        return obj.period
-    admin_period.short_description = '周期'
 
     class Media:
         js = (

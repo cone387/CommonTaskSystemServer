@@ -24,7 +24,7 @@ class ScheduleTimingType(TextChoices):
     DAYS = 'DAYS', '按天'
     WEEKDAYS = 'WEEKDAYS', '按周'
     MONTHDAYS = 'MONTHDAYS', '按月'
-    HOURS = 'HOURS', '按小时'
+    DATETIMES = 'DATETIMES', '自定义日期'
 
 
 class TaskCallbackStatus(TextChoices):
