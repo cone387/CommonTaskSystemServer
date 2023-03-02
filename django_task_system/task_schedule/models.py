@@ -1,7 +1,8 @@
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import models
-from .choices import TaskStatus, TaskScheduleStatus, TaskScheduleType, TaskCallbackStatus, TaskCallbackEvent
+from .choices import TaskStatus, TaskScheduleStatus, TaskScheduleType, TaskCallbackStatus, \
+    TaskCallbackEvent, ScheduleTimingType
 from common_objects.models import CommonTag, CommonCategory, get_default_config
 from common_objects import fields as common_fields
 from utils.cron_utils import get_next_cron_time
@@ -90,11 +91,28 @@ class TaskSchedule(models.Model):
 
     def generate_next_schedule(self, now=None):
         now = now or timezone.now()
+        type_config = self.config[self.type]
+        start, end = self.config.get('date_range', (None, None))
         if self.type == TaskScheduleType.CONTINUOUS.value:
-            self.next_schedule_time = now + timedelta(seconds=self.period)
+            self.next_schedule_time = now + timedelta(seconds=type_config['period'])
         elif self.type == TaskScheduleType.CRONTAB.value:
-            self.next_schedule_time = get_next_cron_time(self.crontab, now)
+            self.next_schedule_time = get_next_cron_time(type_config['crontab'], now)
+        elif self.type == TaskScheduleType.TIMINGS:
+            timings_type = type_config['type']
+            if timings_type == ScheduleTimingType.DAYS:
+                n = now + timedelta(days=type_config['period'])
+                hour, minute, second = type_config['DAYS'].split(':')
+                self.next_schedule_time = datetime(n.year, n.month, n.day, int(hour), int(minute), int(second))
+            elif timings_type == ScheduleTimingType.WEEKDAYS:
+                n = now + timedelta(days=type_config["WEEKDAYS"]['period'] * 7)
+                hour, minute, second = type_config['time'].split(':')
+                self.next_schedule_time = datetime(n.year, n.month, n.day, int(hour), int(minute), int(second))
+            else:
+                raise ValueError('timings_type error')
         else:
+            self.next_schedule_time = datetime.max
+            self.status = TaskScheduleStatus.DONE.value
+        if end and self.next_schedule_time > end:
             self.next_schedule_time = datetime.max
             self.status = TaskScheduleStatus.DONE.value
         self.save(update_fields=('next_schedule_time', 'status'))
