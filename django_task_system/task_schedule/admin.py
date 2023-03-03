@@ -63,20 +63,22 @@ class TaskScheduleCallbackAdmin(UserAdmin):
 
 
 class TaskScheduleAdmin(UserAdmin):
-    list_display = ('id', 'admin_task', 'type', 'next_schedule_time',
+    list_display = ('id', 'admin_task', 'schedule_type', 'next_schedule_time',
                     'admin_status', 'logs', 'update_time')
 
     readonly_fields = ("config", )
 
     fields = (
         ("task", "status"),
-        ("type", 'priority'),
-        ("timings_type",),
-        "weekdays",
-        ("timings_period", "timing_time",),
+        ("schedule_type", 'priority'),
+        "period_schedule",
+        "once_schedule",
         "crontab",
-        ("next_schedule_time", "period"),
-        ("date_range_start", "date_range_end"),
+        "timing_type",
+        ("timing_period", "timing_time",),
+        "timing_weekdays",
+        # ("next_schedule_time", "period"),
+        ("schedule_start_time", "schedule_end_time"),
         'callback',
         'config',
     )

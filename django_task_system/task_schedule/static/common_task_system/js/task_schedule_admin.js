@@ -1,60 +1,71 @@
 $(document).ready(function () {
-  const $type = $('#id_type');
+  const $scheduleType = $('#id_schedule_type');
   const $crontab = $('.form-row.field-crontab');
-  const $nextScheduleTime = $('.fieldBox.field-next_schedule_time');
-  const $period = $('.fieldBox.field-period');
-  const $timings = $('.form-row.field-timings_type');
-  const $timings_time = $('.form-row.field-timing_time');
-  const $weekdays = $('.form-row.field-weekdays');
-  const $timing_type = $('#id_timings_type');
+  const $onceSchedule = $('.form-row.field-once_schedule')
+  const $periodSchedule = $('.form-row.field-period_schedule');
 
-  function show_hide_weekdays(){
-    const t = $timing_type.val();
+  const $timingsDiv = $("div[class*='timing']");
+  const $timingType = $('#id_timings_type');
+  const $timingTime = $('.form-row.field-timing_time');
+  const $timingWeekdays = $('.form-row.field-weekdays');
+
+
+  function show_hide_timing_fields(){
+    const timingType = $timingType.val();
     const $periodUnit = $('#id_period_unit');
-    if(t === 'WEEKDAYS'){
-      $weekdays.show();
-      $periodUnit.text('周');
-    }else{
-      $weekdays.hide();
+    if(timingType === "DATETIMES"){
+      $timingWeekdays.hide();
+      $periodUnit.hide();
+      $timingTime.hide();
+      return;
+    }
+    $periodUnit.show();
+    $timingTime.show();
+    if(timingType === 'DAYS'){
+      $timingWeekdays.hide();
       $periodUnit.text('天');
+    }
+    if(timingType === 'WEEKDAYS'){
+      $timingWeekdays.show();
+      $periodUnit.text('周');
+    }else if(timingType === "MONTH"){
+      $timingWeekdays.hide();
+      $periodUnit.text('月');
     }
   }
 
   function show_hide_timings(show){
     if(show){
-      $timings.show();
-      $timings_time.show();
-      show_hide_weekdays();
+      $timingsDiv.show();
+      show_hide_timing_fields();
     }else{
-      $timings.hide();
-      $timings_time.hide();
-      $weekdays.hide();
+      $timingsDiv.hide();
     }
   }
 
   function show_hide_fields() {
-    console.log($type.val());
-    const t = $type.val();
-    if (t === 'C') {
+    console.log($scheduleType.val());
+    const scheduleType = $scheduleType.val();
+    if (scheduleType === 'C') {
       $crontab.show();
-      $nextScheduleTime.hide();
-      $period.hide();
-    } else if (t === 'S') {
+      $onceSchedule.hide();
+      $periodSchedule.hide();
+    } else if (scheduleType === 'S') {
       $crontab.hide();
-      $nextScheduleTime.show();
-      $period.show();
-    } else if (t === 'O') {
+      $onceSchedule.hide();
+      $periodSchedule.show();
+    } else if (scheduleType === 'O') {
       $crontab.hide();
-      $nextScheduleTime.show();
-      $period.hide();
-    }else if(t === 'T'){
+      $onceSchedule.show();
+      $periodSchedule.hide();
+    }else if(scheduleType === 'T'){
       $crontab.hide();
-      $nextScheduleTime.hide();
-      $period.hide();
+      $onceSchedule.hide();
+      $periodSchedule.hide();
     }
-    show_hide_timings(t === 'T');
+    show_hide_timings(scheduleType === 'T');
   }
   show_hide_fields();
-  $type.on('change', show_hide_fields);
-  $timing_type.on('change', show_hide_weekdays);
+  $scheduleType.on('change', show_hide_fields);
+  $timingType.on('change', show_hide_timing_fields);
 });
