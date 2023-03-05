@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .choices import TaskScheduleType
 from common_objects.admin import UserAdmin
 from django.db.models import Count
+from .choices import TaskScheduleType, ScheduleTimingType
 from . import models, forms
 
 
@@ -63,23 +63,26 @@ class TaskScheduleCallbackAdmin(UserAdmin):
 
 
 class TaskScheduleAdmin(UserAdmin):
-    list_display = ('id', 'admin_task', 'schedule_type', 'next_schedule_time',
+    list_display = ('id', 'admin_task', 'schedule_type', 'schedule_sub_type', 'next_schedule_time',
                     'admin_status', 'logs', 'update_time')
 
-    readonly_fields = ("config", )
+    # readonly_fields = ("next_schedule_time", )
 
     fields = (
         ("task", "status"),
+        "nlp_sentence",
         ("schedule_type", 'priority'),
         "period_schedule",
         "once_schedule",
         "crontab",
         "timing_type",
+        "timing_weekday",
+        "timing_monthday",
         ("timing_period", "timing_time",),
-        "timing_weekdays",
-        # ("next_schedule_time", "period"),
+        "timing_datetime",
         ("schedule_start_time", "schedule_end_time"),
         'callback',
+        'next_schedule_time',
         'config',
     )
     form = forms.TaskScheduleForm
@@ -96,6 +99,17 @@ class TaskScheduleAdmin(UserAdmin):
         return bool(obj.status)
     admin_status.boolean = True
     admin_status.short_description = '状态'
+
+    def schedule_sub_type(self, obj: models.TaskSchedule):
+        type_config = obj.config.get(obj.schedule_type, {})
+        if obj.schedule_type == TaskScheduleType.CRONTAB:
+            return type_config.get('crontab', '')
+        elif obj.schedule_type == TaskScheduleType.CONTINUOUS:
+            return "每%s秒" % type_config.get('period', '')
+        elif obj.schedule_type == TaskScheduleType.TIMINGS:
+            return ScheduleTimingType[obj.config[obj.schedule_type]['type']].label
+        return '-'
+    schedule_sub_type.short_description = '详细'
 
     class Media:
         js = (

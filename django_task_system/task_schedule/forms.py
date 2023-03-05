@@ -5,7 +5,7 @@ from django.contrib.admin import widgets
 from .choices import TaskScheduleType, ScheduleTimingType
 from common_objects.widgets import JSONWidget, JSJsonWidget
 from utils import cron_utils, foreign_key
-from datetime import datetime
+from datetime import datetime, time as datetime_time
 from . import models
 
 
@@ -43,7 +43,7 @@ class DateTimeRangeWidget(forms.widgets.MultiWidget):
 class PeriodWidget(widgets.AdminIntegerFieldWidget):
     template_name = 'task_schedule/period.html'
 
-    def __init__(self, unit=ScheduleTimingType.DAYS.value, attrs=None):
+    def __init__(self, unit=ScheduleTimingType.DAY.value, attrs=None):
         self.unit = unit
         super().__init__(attrs=attrs)
 
@@ -63,7 +63,7 @@ class NullableSplitDateTimeField(forms.SplitDateTimeField):
         return super(NullableSplitDateTimeField, self).clean(value)
 
 
-class MultiWeekdayChoiceFiled(forms.MultipleChoiceField):
+class MultiWeekdaySelectFiled(forms.MultipleChoiceField):
     _choices = [
                   (1, "星期一"),
                   (2, "星期二"),
@@ -76,7 +76,7 @@ class MultiWeekdayChoiceFiled(forms.MultipleChoiceField):
     widget = forms.CheckboxSelectMultiple
 
     def __init__(self, *, choices=(), label="星期", widget=None, **kwargs):
-        super(MultiWeekdayChoiceFiled, self).__init__(
+        super(MultiWeekdaySelectFiled, self).__init__(
             choices=choices or self._choices,
             label=label,
             widget=widget or self.widget,
@@ -84,7 +84,7 @@ class MultiWeekdayChoiceFiled(forms.MultipleChoiceField):
         
     def to_python(self, value):
         if not value:
-            return []
+            return value
         elif not isinstance(value, (list, tuple)):
             raise forms.ValidationError(
                 self.error_messages["invalid_list"], code="invalid_list"
@@ -140,24 +140,143 @@ class PeriodScheduleFiled(forms.MultiValueField):
         return data_list
 
 
-class DatetimeJsonEncoder(json.JSONEncoder):
+class OnceScheduleField(forms.SplitDateTimeField):
+    widget = widgets.AdminSplitDateTime
 
-    def encode(self, o) -> str:
-        if isinstance(o, datetime):
-            return o.strftime("%Y-%m-%d %H:%M:%S")
-        return super(DatetimeJsonEncoder, self).encode(o)
+    def __init__(self, required=False, label="计划时间", **kwargs):
+        super(OnceScheduleField, self).__init__(
+            required=required,
+            label=label,
+            initial=datetime.now(), **kwargs)
+
+
+class MultiDaySelectWidget(forms.MultiWidget):
+
+    template_name = 'task_schedule/multi_date_select.html'
+
+    def __init__(self, attrs=None):
+        ws = (
+            forms.TextInput(attrs={'style': "width: 80%;"}),
+            widgets.AdminTimeWidget(attrs={'style': "margin-top: 5px;"})
+        )
+        super(MultiDaySelectWidget, self).__init__(ws, attrs=attrs)
+
+    def decompress(self, value):
+        if value:
+            return value
+        return [None, None]
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        context['date_label'] = "日期："
+        context['time_label'] = "时间："
+        return context
+
+    class Media:
+        css = {
+            'all': ('common_task_system/css/calendar.css',)
+        }
+        js = ('common_task_system/js/calendar.js',)
+
+
+class MultiDaySelectField(forms.MultiValueField):
+
+    widget = MultiDaySelectWidget
+
+    def __init__(self, required=False, label="自选日期", **kwargs):
+        fs = (
+            forms.CharField(),
+            forms.TimeField()
+        )
+        super(MultiDaySelectField, self).__init__(fs, required=required, label=label, **kwargs)
+
+    def compress(self, data_list):
+        return data_list
+
+    def decompress(self, value):
+        if value:
+            return value
+        return [None, None]
+
+
+class MultiMonthdaySelectFiled(forms.MultipleChoiceField):
+    _choices = [
+        (100, "每月第一天"),
+        (101, "每月最后一天"),
+        (1, "1号"),
+        (2, "2号"),
+        (3, "3号"),
+        (4, "4号"),
+        (5, "5号"),
+        (6, "6号"),
+        (7, "7号"),
+        (8, "8号"),
+        (9, "9号"),
+        (10, "10号"),
+        (11, "11号"),
+        (12, "12号"),
+        (13, "13号"),
+        (14, "14号"),
+        (15, "15号"),
+        (16, "16号"),
+        (17, "17号"),
+        (18, "18号"),
+        (19, "19号"),
+        (20, "20号"),
+        (21, "21号"),
+        (22, "22号"),
+        (23, "23号"),
+        (24, "24号"),
+        (25, "25号"),
+        (26, "26号"),
+        (27, "27号"),
+        (28, "28号"),
+        (29, "29号"),
+        (30, "30号"),
+        (31, "31号"),
+    ]
+    widget = forms.CheckboxSelectMultiple()
+
+    template_name = 'task_schedule/multi_monthday_select.html'
+
+    def __init__(self, *, choices=(), label="日期", widget=None, **kwargs):
+        super(MultiMonthdaySelectFiled, self).__init__(
+            choices=choices or self._choices,
+            label=label,
+            widget=widget or self.widget,
+            **kwargs)
+
+    def to_python(self, value):
+        if not value:
+            return []
+        elif not isinstance(value, (list, tuple)):
+            raise forms.ValidationError(
+                self.error_messages["invalid_list"], code="invalid_list"
+            )
+        return [int(val) for val in value]
+
+
+class NLPSentenceWidget(forms.TextInput):
+
+    template_name = 'task_schedule/nlp_input.html'
 
 
 class TaskScheduleForm(forms.ModelForm):
+    next_schedule_time = forms.DateTimeField(required=False, label='下次计划时间',
+                                         widget=forms.TextInput(attrs={'readonly': 'readonly'}))
+    nlp_sentence = forms.CharField(required=False, label="NLP", help_text="自然语言，如：每天早上8点",
+                                   widget=NLPSentenceWidget(attrs={'style': "width: 60%;"}))
     crontab = forms.CharField(required=False, label="Crontab表达式", help_text="crontab表达式，如：* * * * *")
     period_schedule = PeriodScheduleFiled()
-    once_schedule = forms.SplitDateTimeField(required=False, label="开始时间", widget=widgets.AdminSplitDateTime)
+    once_schedule = OnceScheduleField()
     timing_type = forms.ChoiceField(required=False, label="指定时间", choices=ScheduleTimingType.choices)
-    timing_weekdays = MultiWeekdayChoiceFiled(required=False)
+    timing_weekday = MultiWeekdaySelectFiled(required=False)
+    timing_monthday = MultiMonthdaySelectFiled(required=False)
+    timing_datetime = MultiDaySelectField()
     timing_period = forms.IntegerField(required=False, min_value=1, initial=1, label='频率', widget=PeriodWidget)
-    timing_time = forms.TimeField(required=False, initial='00:00', label="时间", widget=widgets.AdminTimeWidget)
+    timing_time = forms.TimeField(required=False, initial=datetime_time(),
+                                  label="时间", widget=widgets.AdminTimeWidget)
     config = forms.JSONField(required=False, initial={}, label="配置",
-                             encoder=DatetimeJsonEncoder,
                              widget=JSONWidget(attrs={'readonly': 'readonly'})
                              )
 
@@ -168,15 +287,24 @@ class TaskScheduleForm(forms.ModelForm):
             schedule_type = config.get('schedule_type')
             self.initial['schedule_type'] = schedule_type
             type_config = config[schedule_type]
-            if schedule_type == TaskScheduleType.CRONTAB:
+            if schedule_type == TaskScheduleType.CONTINUOUS:
+                self.initial['period_schedule'] = [type_config['schedule_start_time'], type_config['period']]
+            elif schedule_type == TaskScheduleType.ONCE:
+                self.initial['once_schedule'] = datetime.strptime(type_config['schedule_start_time'], '%Y-%m-%d %H:%M:%S')
+            elif schedule_type == TaskScheduleType.CRONTAB:
                 self.initial['crontab'] = type_config['crontab']
             elif schedule_type == TaskScheduleType.TIMINGS:
                 timing_type = type_config.get('type')
+                timing_config = type_config.get(timing_type, {})
                 self.initial['timing_type'] = timing_type
                 self.initial['timing_time'] = type_config['time']
-                if timing_type == ScheduleTimingType.WEEKDAYS:
-                    self.initial['weekdays'] = type_config.get(timing_type).get('weekdays')
-                self.initial['timing_period'] = type_config.get(timing_type).get('period', 1)
+                self.initial['timing_period'] = timing_config.get('period', 1)
+                if timing_type == ScheduleTimingType.WEEKDAY:
+                    self.initial['timing_weekday'] = timing_config.get('weekday')
+                elif timing_type == ScheduleTimingType.MONTHDAY:
+                    self.initial['timing_monthday'] = timing_config.get('monthday')
+                elif timing_type == ScheduleTimingType.DATETIME:
+                    self.initial['timing_datetime'] = timing_config.get('datetime')
 
     def clean(self):
         cleaned_data = super(TaskScheduleForm, self).clean()

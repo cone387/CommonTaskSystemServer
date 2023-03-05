@@ -4,42 +4,49 @@ $(document).ready(function () {
   const $onceSchedule = $('.form-row.field-once_schedule')
   const $periodSchedule = $('.form-row.field-period_schedule');
 
-  const $timingsDiv = $("div[class*='timing']");
-  const $timingType = $('#id_timings_type');
-  const $timingTime = $('.form-row.field-timing_time');
-  const $timingWeekdays = $('.form-row.field-weekdays');
+  const $timingDiv = $("div[class*='timing']");
+  const $timingType = $('#id_timing_type');
+  const $timingDay = $('.form-row.field-timing_time,.fieldBox.field-timing_period');
+  const $timingWeekday = $('.form-row.field-timing_weekday');
+  const $timingMonthday = $('.form-row.field-timing_monthday');
+  const $timingDatetime = $('.form-row.field-timing_datetime');
 
 
   function show_hide_timing_fields(){
     const timingType = $timingType.val();
-    const $periodUnit = $('#id_period_unit');
-    if(timingType === "DATETIMES"){
-      $timingWeekdays.hide();
-      $periodUnit.hide();
-      $timingTime.hide();
+    console.log("timingType is ", timingType);
+    if(timingType === "DATETIME"){
+      $timingWeekday.hide();
+      $timingDay.hide();
+      $timingMonthday.hide();
+      $timingDatetime.show();
       return;
     }
-    $periodUnit.show();
-    $timingTime.show();
-    if(timingType === 'DAYS'){
-      $timingWeekdays.hide();
-      $periodUnit.text('天');
+    $timingDatetime.hide();
+    $timingDay.show();
+    const $timingPeriodUnit = $('#id_period_unit');
+    if(timingType === 'DAY'){
+      $timingWeekday.hide();
+      $timingMonthday.hide();
+      $timingPeriodUnit.text('天');
     }
-    if(timingType === 'WEEKDAYS'){
-      $timingWeekdays.show();
-      $periodUnit.text('周');
-    }else if(timingType === "MONTH"){
-      $timingWeekdays.hide();
-      $periodUnit.text('月');
+    if(timingType === 'WEEKDAY'){
+      $timingWeekday.show();
+      $timingMonthday.hide();
+      $timingPeriodUnit.text('周');
+    }else if(timingType === "MONTHDAY"){
+      $timingWeekday.hide();
+      $timingMonthday.show();
+      $timingPeriodUnit.text('月');
     }
   }
 
-  function show_hide_timings(show){
+  function show_hide_timing(show){
     if(show){
-      $timingsDiv.show();
+      $timingDiv.show();
       show_hide_timing_fields();
     }else{
-      $timingsDiv.hide();
+      $timingDiv.hide();
     }
   }
 
@@ -62,8 +69,12 @@ $(document).ready(function () {
       $crontab.hide();
       $onceSchedule.hide();
       $periodSchedule.hide();
+    }else if(scheduleType === 'N'){
+      $crontab.hide();
+      $onceSchedule.hide();
+      $periodSchedule.hide();
     }
-    show_hide_timings(scheduleType === 'T');
+    show_hide_timing(scheduleType === 'T');
   }
   show_hide_fields();
   $scheduleType.on('change', show_hide_fields);

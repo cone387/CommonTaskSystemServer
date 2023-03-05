@@ -119,6 +119,8 @@ REST_FRAMEWORK = {
     'DATETIME_FORMAT': "%Y-%m-%d %H:%M:%S",
 }
 
+DATETIME_FORMAT = "Y-m-d H:i:s"
+DATE_FORMAT = "Y m d"
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/

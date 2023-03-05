@@ -2,12 +2,14 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.request import HttpRequest
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from . import models, serializers
 from .models import TaskSchedule
 from .choices import TaskScheduleStatus
 from common_objects.rest_view import UserListAPIView, UserRetrieveAPIView
 from queue import PriorityQueue, Empty
 from datetime import datetime
+from jionlp_time import parse_time
 
 schedule_queue = PriorityQueue()
 
@@ -72,3 +74,16 @@ class TaskScheduleQueueAPI:
     @api_view(['GET'])
     def size(request):
         return Response({'size': schedule_queue.qsize()})
+
+
+class ScheduleTimeParseView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        sentence = request.query_params.get('sentence')
+        if not sentence:
+            return Response({'error': 'sentence is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            result = parse_time(sentence)
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

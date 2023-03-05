@@ -14,17 +14,18 @@ class TaskScheduleStatus(TextChoices):
 
 
 class TaskScheduleType(TextChoices):
+    NLP = 'N', 'NLP'
     CRONTAB = 'C', 'Crontab'
     ONCE = 'O', '一次性'
     CONTINUOUS = 'S', '连续性'
-    TIMINGS = 'T', '特定时间'
+    TIMINGS = 'T', '指定时间'
 
 
 class ScheduleTimingType(TextChoices):
-    DAYS = 'DAYS', '按天'
-    WEEKDAYS = 'WEEKDAYS', '按周'
-    MONTHDAYS = 'MONTHDAYS', '按月'
-    DATETIMES = 'DATETIMES', '自定义日期'
+    DAY = 'DAY', '按天'
+    WEEKDAY = 'WEEKDAY', '按周'
+    MONTHDAY = 'MONTHDAY', '按月'
+    DATETIME = 'DATETIME', '自选日期'
 
 
 class TaskCallbackStatus(TextChoices):

@@ -12,7 +12,7 @@ from . import fields
 from django.forms import ValidationError
 
 
-__all__ = ['Task', 'TaskSchedule', 'TaskScheduleCallback', 'TaskScheduleLog']
+mdays = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 
 UserModel = get_user_model()
@@ -76,16 +76,28 @@ class TaskScheduleCallback(models.Model):
 
 class ScheduleConfig:
 
-    def __init__(self, schedule_type=None, crontab=None,
-                 period_schedule=None, timings_type=None,
-                 timings_period=None, timings_time=None, weekdays=None, **kwargs):
+    def __init__(self,
+                 schedule_type=None,
+                 crontab=None,
+                 period_schedule=None,
+                 once_schedule=None,
+                 timing_type=None,
+                 timing_period=None,
+                 timing_time=None,
+                 timing_weekday=None,
+                 timing_monthday=None,
+                 timing_datetime=None,
+                 **kwargs):
         self.schedule_type = schedule_type
+        self.once_schedule = once_schedule
         self.period_schedule = period_schedule
         self.crontab = crontab
-        self.timings_type = timings_type
-        self.timings_period = timings_period
-        self.timings_time = timings_time
-        self.weekdays = weekdays
+        self.timing_type = timing_type
+        self.timing_period = timing_period
+        self.timing_time = timing_time
+        self.timing_weekday = timing_weekday
+        self.timing_monthday = timing_monthday
+        self.timing_datetime = timing_datetime
         self.kwargs = kwargs
         self._config = self.to_config()
 
@@ -108,32 +120,36 @@ class ScheduleConfig:
                 raise ValidationError("period can't be 0 while type is continuous")
             type_config['period'] = period
             type_config['schedule_start_time'] = schedule_time
+        elif schedule_type == TaskScheduleType.ONCE:
+            type_config['schedule_start_time'] = self.once_schedule
         elif schedule_type == TaskScheduleType.TIMINGS:
-            timings_type = self.timings_type
-            type_config['time'] = self.timings_time.strftime('%H:%M:%S')
-            type_config['type'] = timings_type
-            timings_config = type_config.setdefault(timings_type, {})
-            if timings_type == ScheduleTimingType.DAYS:
-                if self.timings_period == 0:
-                    raise ValidationError("period can't be 0 while type is timings")
-                timings_config.setdefault('period', self.timings_period)
-            elif timings_type == ScheduleTimingType.WEEKDAYS:
-                if not self.weekdays:
-                    raise ValidationError("weekdays is required while type is timings")
-                timings_config.setdefault('period', self.timings_period)
-                timings_config.setdefault('weekdays', self.weekdays)
-            elif timings_type == ScheduleTimingType.MONTHDAYS:
-                timings_config.setdefault('period', self.timings_period)
-            elif timings_type == ScheduleTimingType.DATETIMES:
-                pass
+            timing_type = self.timing_type
+            type_config['time'] = self.timing_time.strftime('%H:%M:%S')
+            type_config['type'] = timing_type
+            timing_config = type_config.setdefault(timing_type, {})
+            if timing_type == ScheduleTimingType.DAY:
+                if self.timing_period == 0:
+                    raise ValidationError("period can't be 0 while type is timing")
+                timing_config['period'] = self.timing_period
+            elif timing_type == ScheduleTimingType.WEEKDAY:
+                if not self.timing_weekday:
+                    raise ValidationError("weekdays is required while type is timing")
+                timing_config['period'] = self.timing_period
+                timing_config['weekday'] = self.timing_weekday
+            elif timing_type == ScheduleTimingType.MONTHDAY:
+                timing_config['period'] = self.timing_period
+                timing_config['monthday'] = self.timing_monthday
+            elif timing_type == ScheduleTimingType.DATETIME:
+                timing_config['datetime'] = self.timing_datetime
             else:
-                raise ValidationError("timings_type is invalid")
+                raise ValidationError("timing_type is invalid")
         else:
             raise ValidationError("type<%s> is invalid" % schedule_type)
         return config
 
     def get_current_time(self):
         now = timezone.now()
+        now_seconds = now.hour * 3600 + now.minute * 60 + now.second
         schedule_type = self.schedule_type
         type_config = self._config[schedule_type]
         schedule_time = None
@@ -144,19 +160,19 @@ class ScheduleConfig:
         elif schedule_type == TaskScheduleType.CRONTAB.value:
             schedule_time = get_next_cron_time(type_config['crontab'], now)
         elif schedule_type == TaskScheduleType.TIMINGS:
-            timings_type = type_config['type']
+            timing_type = type_config['type']
             hour, minute, second = type_config['time'].split(':')
             hour, minute, second = int(hour), int(minute), int(second)
-            if timings_type == ScheduleTimingType.DAYS:
+            timing_config = type_config[timing_type]
+            if timing_type == ScheduleTimingType.DAY:
                 schedule_time = datetime(now.year, now.month, now.day, hour, minute, second)
                 while schedule_time < now:
-                    schedule_time += timedelta(days=type_config['period'])
-            elif timings_type == ScheduleTimingType.WEEKDAYS:
-                weekdays_config = type_config["WEEKDAYS"]
-                weekdays = weekdays_config['weekdays']
+                    schedule_time += timedelta(days=timing_config['period'])
+            elif timing_type == ScheduleTimingType.WEEKDAY:
+                weekdays = timing_config['weekday']
                 weekday = now.isoweekday()
                 schedule_again = weekday not in weekdays
-                if weekday in weekdays:
+                if not schedule_again:
                     schedule_time = datetime(now.year, now.month, now.day, hour, minute, second)
                     if now > schedule_time:
                         schedule_again = True
@@ -168,12 +184,60 @@ class ScheduleConfig:
                             break
                     else:
                         days = weekday - weekdays[0]
-                        delta = timedelta(days=weekdays_config['period'] * 7 - days)
+                        delta = timedelta(days=timing_config['period'] * 7 - days)
                     schedule_time = datetime(now.year, now.month, now.day, hour, minute, second) + delta
+            elif timing_type == ScheduleTimingType.MONTHDAY:
+                monthdays = timing_config['monthday']
+                if not monthdays:
+                    raise ValidationError("monthdays is required while type is timing-monthday")
+                schedule_again = now.day not in monthdays
+                if not schedule_again:
+                    schedule_time = datetime(now.year, now.month, now.day, hour, minute, second)
+                    if now > schedule_time:
+                        schedule_again = True
+                if schedule_again:
+                    def next_month(year, month):
+                        if month == 12:
+                            return year + 1, 1
+                        else:
+                            return year, month + 1
+                    for i in monthdays:
+                        if i == 100:
+                            i = 1
+                        elif i == 101:
+                            i = mdays[now.month]
+                        if i > now.day:
+                            schedule_time = datetime(now.year, now.month, i, hour, minute, second)
+                            break
+                    else:
+                        year, month = next_month(now.year, now.month)
+                        schedule_time = datetime(year, month, monthdays[0], hour, minute, second)
+            elif timing_type == ScheduleTimingType.DATETIME:
+                dates, t = timing_config['datetime']
+                if not dates:
+                    raise ValidationError("datetime is required while type is timing-datetime")
+                if t:
+                    t: datetime.time
+                    seconds = t.hour * 3600 + t.minute * 60 + t.second
+                else:
+                    seconds = 0
+                for i in dates.split(','):
+                    d = datetime.strptime(i, '%Y-%m-%d')
+                    if d > now or (d == now and seconds >= now_seconds):
+                        break
+                else:
+                    raise ValidationError("cant find a datetime after now")
+                schedule_time = datetime(d.year, d.month, d.day, t.hour, t.minute, t.second)
             else:
-                raise ValueError('timings_type error')
+                raise ValidationError('unsupported timing_type<%s>' % timing_type)
         elif schedule_type == TaskScheduleType.ONCE:
             schedule_time = type_config['schedule_start_time']
+        else:
+            raise ValidationError("type<%s> is invalid" % schedule_type)
+        if isinstance(schedule_time, str):
+            schedule_time = datetime.strptime(schedule_time, '%Y-%m-%d %H:%M:%S')
+        if schedule_time < now:
+            raise ValidationError("cant create ago schedule time: %s" % schedule_time)
         return schedule_time
 
     def get_next_time(self, last_time: datetime):
@@ -187,11 +251,11 @@ class ScheduleConfig:
         elif schedule_type == TaskScheduleType.CRONTAB.value:
             next_time = get_next_cron_time(type_config['crontab'], now)
         elif schedule_type == TaskScheduleType.TIMINGS:
-            timings_type = type_config['type']
-            if timings_type == ScheduleTimingType.DAYS:
+            timing_type = type_config['type']
+            if timing_type == ScheduleTimingType.DAY:
                 while next_time < now:
                     next_time += timedelta(days=type_config['period'])
-            elif timings_type == ScheduleTimingType.WEEKDAYS:
+            elif timing_type == ScheduleTimingType.WEEKDAY:
                 weekdays_config = type_config["WEEKDAYS"]
                 weekdays = weekdays_config['weekdays']
                 weekday = next_time.isoweekday()
@@ -205,11 +269,11 @@ class ScheduleConfig:
                     delta = timedelta(days=weekdays_config['period'] * 7 - days)
                 next_time = next_time + delta
             else:
-                raise ValueError("unsupported timings type: %s" % schedule_type)
+                raise ValidationError("unsupported timing type: %s" % schedule_type)
         elif schedule_type == TaskScheduleType.ONCE:
             next_time = datetime.max
         else:
-            raise ValueError("unsupported schedule type: %s" % schedule_type)
+            raise ValidationError("unsupported schedule type: %s" % schedule_type)
         return next_time
 
 
@@ -232,39 +296,6 @@ class TaskSchedule(models.Model):
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     def generate_next_schedule(self, now=None):
-        # now = now or timezone.now()
-        # type_config = self.config[self.type]
-        # start, end = self.config.get('date_range', (None, None))
-        # if self.type == TaskScheduleType.CONTINUOUS.value:
-        #     self.next_schedule_time = now + timedelta(seconds=type_config['period'])
-        # elif self.type == TaskScheduleType.CRONTAB.value:
-        #     self.next_schedule_time = get_next_cron_time(type_config['crontab'], now)
-        # elif self.type == TaskScheduleType.TIMINGS:
-        #     timings_type = type_config['type']
-        #     if timings_type == ScheduleTimingType.DAYS:
-        #         n = now + timedelta(days=type_config['period'])
-        #         hour, minute, second = type_config['DAYS'].split(':')
-        #         self.next_schedule_time = datetime(n.year, n.month, n.day, int(hour), int(minute), int(second))
-        #     elif timings_type == ScheduleTimingType.WEEKDAYS:
-        #         weekdays_config = type_config["WEEKDAYS"]
-        #         weekdays = weekdays_config['weekdays']
-        #         weekday = now.isoweekday()
-        #         for i in weekdays:
-        #             if i > weekday:
-        #                 days = i - weekday
-        #                 n = now + timedelta(days=days)
-        #                 break
-        #         else:
-        #             days = weekday - weekdays[0]
-        #             n = now + timedelta(days=weekdays_config['period'] * 7 - days)
-        #         hour, minute, second = type_config['time'].split(':')
-        #         self.next_schedule_time = datetime(n.year, n.month, n.day, int(hour), int(minute), int(second))
-        #
-        #     else:
-        #         raise ValueError('timings_type error')
-        # else:
-        #     self.next_schedule_time = datetime.max
-        #     self.status = TaskScheduleStatus.DONE.value
         self.next_schedule_time = ScheduleConfig(**self.config).get_next_time(self.next_schedule_time)
         if self.next_schedule_time > self.schedule_end_time:
             self.next_schedule_time = datetime.max
