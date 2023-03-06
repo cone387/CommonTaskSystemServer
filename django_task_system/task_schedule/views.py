@@ -42,7 +42,7 @@ class TaskScheduleQueueAPI:
         now = datetime.now()
         queryset = TaskSchedule.objects.filter(next_schedule_time__lte=now, status=TaskScheduleStatus.OPENING.value)
         for schedule in queryset:
-            schedule_queue.put(schedule)
+            schedule_queue.put(serializers.QueueScheduleSerializer(schedule).data)
             schedule.generate_next_schedule()
         return queryset
 
@@ -53,13 +53,15 @@ class TaskScheduleQueueAPI:
         try:
             schedule = schedule_queue.get(block=False)
         except Empty:
-            schedules = TaskScheduleQueueAPI.query_expiring_schedules()
-            if schedules:
-                schedule = schedules.first()
+            TaskScheduleQueueAPI.query_expiring_schedules()
+            try:
+                schedule = schedule_queue.get(block=False)
+            except Empty:
+                pass
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         if schedule:
-            return Response(serializers.QueueScheduleSerializer(schedule).data)
+            return Response(schedule)
         return Response({'msg': 'no schedule to run'}, status=status.HTTP_204_NO_CONTENT)
 
     @staticmethod

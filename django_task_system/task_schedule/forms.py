@@ -131,11 +131,6 @@ class PeriodScheduleFiled(forms.MultiValueField):
             )
         return [int(val) for val in value]
 
-    def decompress(self, value):
-        if value:
-            return value
-        return [None, 60]
-
     def compress(self, data_list):
         return data_list
 
@@ -301,7 +296,8 @@ class TaskScheduleForm(forms.ModelForm):
             type_config = config[schedule_type]
             self.initial['nlp_sentence'] = config.get('nlp-sentence')
             if schedule_type == TaskScheduleType.CONTINUOUS:
-                self.initial['period_schedule'] = [type_config['schedule_start_time'], type_config['period']]
+                t = datetime.strptime(type_config['schedule_start_time'], '%Y-%m-%d %H:%M:%S')
+                self.initial['period_schedule'] = [t, type_config['period']]
             elif schedule_type == TaskScheduleType.ONCE:
                 self.initial['once_schedule'] = datetime.strptime(type_config['schedule_start_time'],
                                                                   '%Y-%m-%d %H:%M:%S')

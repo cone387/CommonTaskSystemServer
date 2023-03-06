@@ -107,6 +107,36 @@ class ScheduleConfig:
         self.timing_datetime = timing_datetime
         self.kwargs = kwargs
         self.config = config or self.to_config()
+        if config:
+            self.parse_config(config)
+
+    def parse_config(self, config):
+        schedule_type = self.schedule_type = config['schedule_type']
+        type_config = config[schedule_type]
+        if schedule_type == TaskScheduleType.ONCE:
+            self.once_schedule = type_config['schedule_start_time']
+        elif schedule_type == TaskScheduleType.CRONTAB:
+            self.crontab = type_config['crontab']
+        elif schedule_type == TaskScheduleType.CONTINUOUS:
+            self.period_schedule = [
+                type_config["schedule_start_time"],
+                type_config["period"]
+            ]
+        elif schedule_type == TaskScheduleType.TIMINGS:
+            timing_type = self.timing_type = type_config["type"]
+            self.timing_time = type_config.get('time', None)
+            timing_config = type_config[timing_type]
+            if timing_type == ScheduleTimingType.DAY:
+                self.once_schedule = timing_config['period']
+            elif timing_type == ScheduleTimingType.WEEKDAY:
+                self.timing_monthday = timing_config['weekday']
+                self.timing_period = timing_config['period']
+            elif timing_type == ScheduleTimingType.MONTHDAY:
+                self.timing_monthday = timing_config['monthday']
+                self.timing_period = timing_config['period']
+            elif timing_type == ScheduleTimingType.YEAR:
+                self.timing_year = timing_config['year']
+                self.timing_period = timing_config['period']
 
     def to_config(self):
         if self.nlp_sentence:
@@ -115,7 +145,7 @@ class ScheduleConfig:
             self.schedule_type = config['schedule_type']
             return config
         config = {
-            'schedule_type': self.schedule_type
+            'schedule_type': self.schedule_type,
         }
         schedule_type = self.schedule_type
         type_config: dict = config.setdefault(self.schedule_type, {})
@@ -227,11 +257,11 @@ class ScheduleConfig:
                         year, month = next_month(now.year, now.month)
                         schedule_time = datetime(year, month, monthdays[0], hour, minute, second)
             elif timing_type == ScheduleTimingType.YEAR:
-                monthdays = timing_config['year']
-                if not monthdays:
+                month_days = timing_config['year']
+                if not month_days:
                     raise ValidationError("year month day is required while type is timing-datetime")
                 month, day = 1, 1
-                for i in monthdays.split(","):
+                for i in month_days.split(","):
                     month, day = i.split('-')
                     month, day = int(month), int(day)
                     d = datetime(now.year, month, day, hour, minute, second)
@@ -269,24 +299,27 @@ class ScheduleConfig:
         return schedule_time
 
     def get_next_time(self, last_time: datetime):
-        now = datetime.now()
         schedule_type = self.schedule_type
         type_config = self.config[schedule_type]
         next_time = last_time
         if schedule_type == TaskScheduleType.CONTINUOUS.value:
-            while next_time < now:
+            while next_time <= last_time:
                 next_time += timedelta(seconds=self.period_schedule[1])
         elif schedule_type == TaskScheduleType.CRONTAB.value:
-            next_time = get_next_cron_time(type_config['crontab'], now)
+            next_time = get_next_cron_time(type_config['crontab'], last_time)
         elif schedule_type == TaskScheduleType.TIMINGS:
             timing_type = type_config['type']
+            hour, minute, second = type_config['time'].split(':')
+            hour, minute, second = int(hour), int(minute), int(second)
+            timing_config = type_config[timing_type]
+            timing_period = timing_config.get('period', 1)
             if timing_type == ScheduleTimingType.DAY:
-                while next_time < now:
-                    next_time += timedelta(days=type_config['period'])
+                while next_time <= last_time:
+                    next_time += timedelta(days=timing_period)
             elif timing_type == ScheduleTimingType.WEEKDAY:
-                weekdays_config = type_config["WEEKDAYS"]
-                weekdays = weekdays_config['weekdays']
-                weekday = next_time.isoweekday()
+                weekday_config = timing_config["WEEKDAY"]
+                weekdays = weekday_config['weekday']
+                weekday = last_time.isoweekday()
                 for i in weekdays:
                     if i > weekday:
                         days = i - weekday
@@ -294,8 +327,36 @@ class ScheduleConfig:
                         break
                 else:
                     days = weekday - weekdays[0]
-                    delta = timedelta(days=weekdays_config['period'] * 7 - days)
+                    delta = timedelta(days=timing_period * 7 - days)
                 next_time = next_time + delta
+            elif timing_type == ScheduleTimingType.MONTHDAY:
+                monthdays = timing_config['monthday']
+                day = 1
+                for day in monthdays:
+                    if day == 0:
+                        day = 1
+                    elif day == 32:
+                        day = mdays[last_time.month]
+                    next_time = datetime(last_time.year, last_time.month, day, hour, minute, second)
+                    if next_time > last_time:
+                        break
+                else:
+                    month = (last_time.month + timing_period) % 12
+                    year = last_time.year + (last_time.month + timing_period) // 12
+                    next_time = datetime(year, month, day, hour, minute, second)
+            elif timing_type == ScheduleTimingType.YEAR:
+                month_days = timing_config['year']
+                if not month_days:
+                    raise ValidationError("year month day is required while type is timing-datetime")
+                month, day = 1, 1
+                for i in month_days.split(","):
+                    month, day = i.split('-')
+                    month, day = int(month), int(day)
+                    next_time = datetime(last_time.year, month, day, hour, minute, second)
+                    if next_time > last_time:
+                        break
+                else:
+                    next_time = datetime(last_time.year + timing_period, month, day, hour, minute, second)
             else:
                 raise ValidationError("unsupported timing type: %s" % schedule_type)
         elif schedule_type == TaskScheduleType.ONCE:
@@ -324,7 +385,9 @@ class TaskSchedule(models.Model):
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     def generate_next_schedule(self, now=None):
-        self.next_schedule_time = ScheduleConfig(schedule_type=self.schedule_type, config=self.config).get_next_time(self.next_schedule_time)
+        self.next_schedule_time = ScheduleConfig(schedule_type=self.schedule_type,
+                                                 config=self.config
+                                                 ).get_next_time(now or datetime.now())
         if self.next_schedule_time > self.schedule_end_time:
             self.next_schedule_time = datetime.max
             self.status = TaskScheduleStatus.DONE.value
