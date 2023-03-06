@@ -152,7 +152,7 @@ class OnceScheduleField(forms.SplitDateTimeField):
 
 class MultiDaySelectWidget(forms.MultiWidget):
 
-    template_name = 'task_schedule/multi_date_select.html'
+    template_name = 'task_schedule/multi_day_select.html'
 
     def __init__(self, attrs=None):
         ws = (
@@ -201,8 +201,8 @@ class MultiDaySelectField(forms.MultiValueField):
 
 class MultiMonthdaySelectFiled(forms.MultipleChoiceField):
     _choices = [
-        (100, "每月第一天"),
-        (101, "每月最后一天"),
+        (0, "每月第一天"),
+        (32, "每月最后一天"),
         (1, "1号"),
         (2, "2号"),
         (3, "3号"),
@@ -256,6 +256,17 @@ class MultiMonthdaySelectFiled(forms.MultipleChoiceField):
         return [int(val) for val in value]
 
 
+class MultiYearDaySelectWidget(forms.TextInput):
+
+    template_name = 'task_schedule/multi_month_day_select.html'
+
+    class Media:
+        css = {
+            'all': ('common_task_system/css/calendar.css',)
+        }
+        js = ('common_task_system/js/calendar.js',)
+
+
 class NLPSentenceWidget(forms.TextInput):
 
     template_name = 'task_schedule/nlp_input.html'
@@ -263,7 +274,7 @@ class NLPSentenceWidget(forms.TextInput):
 
 class TaskScheduleForm(forms.ModelForm):
     next_schedule_time = forms.DateTimeField(required=False, label='下次计划时间',
-                                         widget=forms.TextInput(attrs={'readonly': 'readonly'}))
+                                             widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     nlp_sentence = forms.CharField(required=False, label="NLP", help_text="自然语言，如：每天早上8点",
                                    widget=NLPSentenceWidget(attrs={'style': "width: 60%;"}))
     crontab = forms.CharField(required=False, label="Crontab表达式", help_text="crontab表达式，如：* * * * *")
@@ -272,6 +283,7 @@ class TaskScheduleForm(forms.ModelForm):
     timing_type = forms.ChoiceField(required=False, label="指定时间", choices=ScheduleTimingType.choices)
     timing_weekday = MultiWeekdaySelectFiled(required=False)
     timing_monthday = MultiMonthdaySelectFiled(required=False)
+    timing_year = forms.CharField(required=False, label="选择日期", widget=MultiYearDaySelectWidget(attrs={'style': "width: 60%;"}))
     timing_datetime = MultiDaySelectField()
     timing_period = forms.IntegerField(required=False, min_value=1, initial=1, label='频率', widget=PeriodWidget)
     timing_time = forms.TimeField(required=False, initial=datetime_time(),
@@ -287,10 +299,12 @@ class TaskScheduleForm(forms.ModelForm):
             schedule_type = config.get('schedule_type')
             self.initial['schedule_type'] = schedule_type
             type_config = config[schedule_type]
+            self.initial['nlp_sentence'] = config.get('nlp-sentence')
             if schedule_type == TaskScheduleType.CONTINUOUS:
                 self.initial['period_schedule'] = [type_config['schedule_start_time'], type_config['period']]
             elif schedule_type == TaskScheduleType.ONCE:
-                self.initial['once_schedule'] = datetime.strptime(type_config['schedule_start_time'], '%Y-%m-%d %H:%M:%S')
+                self.initial['once_schedule'] = datetime.strptime(type_config['schedule_start_time'],
+                                                                  '%Y-%m-%d %H:%M:%S')
             elif schedule_type == TaskScheduleType.CRONTAB:
                 self.initial['crontab'] = type_config['crontab']
             elif schedule_type == TaskScheduleType.TIMINGS:
@@ -303,13 +317,17 @@ class TaskScheduleForm(forms.ModelForm):
                     self.initial['timing_weekday'] = timing_config.get('weekday')
                 elif timing_type == ScheduleTimingType.MONTHDAY:
                     self.initial['timing_monthday'] = timing_config.get('monthday')
+                elif timing_type == ScheduleTimingType.YEAR:
+                    self.initial['timing_year'] = timing_config.get('year')
                 elif timing_type == ScheduleTimingType.DATETIME:
                     self.initial['timing_datetime'] = timing_config.get('datetime')
 
     def clean(self):
         cleaned_data = super(TaskScheduleForm, self).clean()
+        cleaned_data.pop("config", None)
         schedule = models.ScheduleConfig(**cleaned_data)
-        cleaned_data['config'] = schedule.to_config()
+        cleaned_data['schedule_type'] = schedule.schedule_type
+        cleaned_data['config'] = schedule.config
         cleaned_data['next_schedule_time'] = schedule.get_current_time()
         return cleaned_data
 

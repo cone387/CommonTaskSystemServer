@@ -4,22 +4,21 @@
 # datetime: 2023/3/5 15:33
 # software: PyCharm
 from typing import Dict
-from dateutil import parser
 
 
-def nlp_config_to_schedule_config(nlp_syntax: Dict):
-    type = nlp_syntax['type']
+def nlp_config_to_schedule_config(nlp_syntax: Dict, sentence=None):
+    nlp_type = nlp_syntax['type']
     definition = nlp_syntax['definition']
     config = {
-        "nlp-sentence": nlp_syntax['sentence'],
+        "nlp-sentence": sentence,
     }
     nlp_time = nlp_syntax['time']
-    if type == 'time_point':
+    if nlp_type == 'time_point':
         config['schedule_type'] = "O"
         config['O'] = {
             "schedule_start_time": nlp_syntax['time'][0],
         }
-    elif type == 'time_period':
+    elif nlp_type == 'time_period':
         delta = nlp_syntax['time']['delta']
         years = delta.get('year', 0)
         months = delta.get('month', 0)
@@ -36,20 +35,26 @@ def nlp_config_to_schedule_config(nlp_syntax: Dict):
             }
         else:
             config['schedule_type'] = "T"
-            config['T'] = {
-                "type": "period",
-                "time": nlp_time['point']['time'][0],
+            date, time = nlp_time['point']['time'][0].split()
+            year, month, day = date.split('-')
+            timing_config = config['T'] = {
+                "time": time,
             }
             if days:
-                config['T']["DAYS"] = {
+                timing_config["DAY"] = {
                     "period": days,
                 }
+                timing_config["type"] = "DAY"
             elif months:
-                config['T']["MONTHDAYS"] = {
+                timing_config["MONTHDAY"] = {
                     "period": months,
+                    "monthday": [int(day)]
                 }
+                timing_config["type"] = "MONTHDAY"
             elif years:
-                config['T']["YEARS"] = {
-                    "years": years
+                timing_config["YEAR"] = {
+                    "period": years,
+                    "year": "%s-%s" % (month, day)
                 }
+                timing_config["type"] = "YEAR"
     return config

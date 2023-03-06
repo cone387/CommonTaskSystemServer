@@ -10,6 +10,7 @@ from common_objects.rest_view import UserListAPIView, UserRetrieveAPIView
 from queue import PriorityQueue, Empty
 from datetime import datetime
 from jionlp_time import parse_time
+from utils.schedule_time import nlp_config_to_schedule_config
 
 schedule_queue = PriorityQueue()
 
@@ -84,6 +85,10 @@ class ScheduleTimeParseView(APIView):
             return Response({'error': 'sentence is required'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             result = parse_time(sentence)
-            return Response(result)
+            schedule = nlp_config_to_schedule_config(result, sentence=sentence)
+            return Response({
+                "jio_result": result,
+                "schedule": schedule
+            })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

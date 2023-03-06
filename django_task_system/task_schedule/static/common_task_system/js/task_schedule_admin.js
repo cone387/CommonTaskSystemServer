@@ -9,6 +9,7 @@ $(document).ready(function () {
   const $timingDay = $('.form-row.field-timing_time,.fieldBox.field-timing_period');
   const $timingWeekday = $('.form-row.field-timing_weekday');
   const $timingMonthday = $('.form-row.field-timing_monthday');
+   const $timingYear = $('.form-row.field-timing_year');
   const $timingDatetime = $('.form-row.field-timing_datetime');
 
 
@@ -19,6 +20,7 @@ $(document).ready(function () {
       $timingWeekday.hide();
       $timingDay.hide();
       $timingMonthday.hide();
+      $timingYear.hide();
       $timingDatetime.show();
       return;
     }
@@ -28,16 +30,24 @@ $(document).ready(function () {
     if(timingType === 'DAY'){
       $timingWeekday.hide();
       $timingMonthday.hide();
+      $timingYear.hide();
       $timingPeriodUnit.text('天');
     }
     if(timingType === 'WEEKDAY'){
       $timingWeekday.show();
       $timingMonthday.hide();
+      $timingYear.hide();
       $timingPeriodUnit.text('周');
     }else if(timingType === "MONTHDAY"){
       $timingWeekday.hide();
       $timingMonthday.show();
+      $timingYear.hide();
       $timingPeriodUnit.text('月');
+    }else if(timingType === "YEAR"){
+      $timingWeekday.hide();
+      $timingMonthday.hide();
+      $timingYear.show();
+      $timingPeriodUnit.text('年');
     }
   }
 

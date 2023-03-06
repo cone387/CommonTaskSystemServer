@@ -78,6 +78,7 @@ class TaskScheduleAdmin(UserAdmin):
         "timing_type",
         "timing_weekday",
         "timing_monthday",
+        "timing_year",
         ("timing_period", "timing_time",),
         "timing_datetime",
         ("schedule_start_time", "schedule_end_time"),

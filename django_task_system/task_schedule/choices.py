@@ -14,7 +14,6 @@ class TaskScheduleStatus(TextChoices):
 
 
 class TaskScheduleType(TextChoices):
-    NLP = 'N', 'NLP'
     CRONTAB = 'C', 'Crontab'
     ONCE = 'O', '一次性'
     CONTINUOUS = 'S', '连续性'
@@ -25,6 +24,7 @@ class ScheduleTimingType(TextChoices):
     DAY = 'DAY', '按天'
     WEEKDAY = 'WEEKDAY', '按周'
     MONTHDAY = 'MONTHDAY', '按月'
+    YEAR = 'YEAR', "按年"
     DATETIME = 'DATETIME', '自选日期'
 
 
