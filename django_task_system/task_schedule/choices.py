@@ -11,6 +11,7 @@ class TaskScheduleStatus(TextChoices):
     CLOSED = 'C', '关闭'
     DONE = 'D', '已完成'
     TEST = 'T', '测试'
+    ERROR = 'E', '调度错误'
 
 
 class TaskScheduleType(TextChoices):

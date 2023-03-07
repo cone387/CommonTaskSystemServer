@@ -7,12 +7,12 @@ from . import models, serializers
 from .models import TaskSchedule
 from .choices import TaskScheduleStatus
 from common_objects.rest_view import UserListAPIView, UserRetrieveAPIView
-from queue import PriorityQueue, Empty
+from queue import Queue, Empty
 from datetime import datetime
 from jionlp_time import parse_time
 from utils.schedule_time import nlp_config_to_schedule_config
 
-schedule_queue = PriorityQueue()
+schedule_queue = Queue()
 
 
 class TaskListView(UserListAPIView):
@@ -49,7 +49,6 @@ class TaskScheduleQueueAPI:
     @staticmethod
     @api_view(['GET'])
     def get(request: HttpRequest):
-        schedule = None
         try:
             schedule = schedule_queue.get(block=False)
         except Empty:
@@ -57,12 +56,10 @@ class TaskScheduleQueueAPI:
             try:
                 schedule = schedule_queue.get(block=False)
             except Empty:
-                pass
+                return Response({'msg': 'no schedule to run'}, status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        if schedule:
-            return Response(schedule)
-        return Response({'msg': 'no schedule to run'}, status=status.HTTP_204_NO_CONTENT)
+        return Response(schedule)
 
     @staticmethod
     @api_view(['GET'])

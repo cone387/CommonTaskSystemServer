@@ -191,8 +191,8 @@ class ScheduleConfig:
             raise ValidationError("type<%s> is invalid" % schedule_type)
         return config
 
-    def get_current_time(self):
-        now = timezone.now()
+    def get_current_time(self, start_time=None):
+        now = max(timezone.now(), start_time) if start_time else timezone.now()
         now_seconds = now.hour * 3600 + now.minute * 60 + now.second
         schedule_type = self.schedule_type
         type_config = self.config[schedule_type]
@@ -294,8 +294,8 @@ class ScheduleConfig:
             raise ValidationError("type<%s> is invalid" % schedule_type)
         if isinstance(schedule_time, str):
             schedule_time = datetime.strptime(schedule_time, '%Y-%m-%d %H:%M:%S')
-        if schedule_time < now:
-            raise ValidationError("cant create ago schedule time: %s" % schedule_time)
+        # if schedule_time < now:
+        #     raise ValidationError("cant create a schedule time before now, schedule_time<%s>" % schedule_time)
         return schedule_time
 
     def get_next_time(self, last_time: datetime):
@@ -317,8 +317,7 @@ class ScheduleConfig:
                 while next_time <= last_time:
                     next_time += timedelta(days=timing_period)
             elif timing_type == ScheduleTimingType.WEEKDAY:
-                weekday_config = timing_config["WEEKDAY"]
-                weekdays = weekday_config['weekday']
+                weekdays = timing_config['weekday']
                 weekday = last_time.isoweekday()
                 for i in weekdays:
                     if i > weekday:
@@ -369,8 +368,6 @@ class ScheduleConfig:
 class TaskSchedule(models.Model):
     id = models.AutoField(primary_key=True)
     task = models.ForeignKey(Task, on_delete=models.CASCADE, db_constraint=False, verbose_name='任务')
-    schedule_type = common_fields.CharField(default=TaskScheduleType.CONTINUOUS.value, verbose_name='计划类型',
-                                            choices=TaskScheduleType.choices)
     priority = models.IntegerField(default=0, verbose_name='优先级')
     next_schedule_time = models.DateTimeField(default=timezone.now, verbose_name='下次运行时间', db_index=True)
     schedule_start_time = models.DateTimeField(default=datetime.min, verbose_name='开始时间')
@@ -385,9 +382,12 @@ class TaskSchedule(models.Model):
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     def generate_next_schedule(self, now=None):
-        self.next_schedule_time = ScheduleConfig(schedule_type=self.schedule_type,
-                                                 config=self.config
-                                                 ).get_next_time(now or datetime.now())
+        try:
+            self.next_schedule_time = ScheduleConfig(config=self.config).get_next_time(now or datetime.now())
+        except Exception as e:
+            self.status = TaskScheduleStatus.ERROR.value
+            self.save(update_fields=('status',))
+            raise e
         if self.next_schedule_time > self.schedule_end_time:
             self.next_schedule_time = datetime.max
             self.status = TaskScheduleStatus.DONE.value

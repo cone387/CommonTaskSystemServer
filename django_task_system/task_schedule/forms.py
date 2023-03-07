@@ -268,6 +268,7 @@ class NLPSentenceWidget(forms.TextInput):
 
 
 class TaskScheduleForm(forms.ModelForm):
+    schedule_type = forms.ChoiceField(required=True, label="计划类型", choices=TaskScheduleType.choices)
     next_schedule_time = forms.DateTimeField(required=False, label='下次计划时间',
                                              widget=forms.TextInput(attrs={'readonly': 'readonly'}))
     nlp_sentence = forms.CharField(required=False, label="NLP", help_text="自然语言，如：每天早上8点",
@@ -322,9 +323,10 @@ class TaskScheduleForm(forms.ModelForm):
         cleaned_data = super(TaskScheduleForm, self).clean()
         cleaned_data.pop("config", None)
         schedule = models.ScheduleConfig(**cleaned_data)
-        cleaned_data['schedule_type'] = schedule.schedule_type
         cleaned_data['config'] = schedule.config
-        cleaned_data['next_schedule_time'] = schedule.get_current_time()
+        cleaned_data['next_schedule_time'] = schedule.get_current_time(
+            start_time=cleaned_data.get('schedule_start_time', None)
+        )
         return cleaned_data
 
     class Meta:

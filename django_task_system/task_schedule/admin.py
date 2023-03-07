@@ -101,14 +101,25 @@ class TaskScheduleAdmin(UserAdmin):
     admin_status.boolean = True
     admin_status.short_description = '状态'
 
+    def schedule_type(self, obj):
+        t = obj.config.get("schedule_type")
+        for i in TaskScheduleType:
+            i: TaskScheduleType
+            if i == t:
+                return i.label
+        return '-'
+    schedule_type.short_description = '计划类型'
+
     def schedule_sub_type(self, obj: models.TaskSchedule):
-        type_config = obj.config.get(obj.schedule_type, {})
-        if obj.schedule_type == TaskScheduleType.CRONTAB:
+        config = obj.config
+        schedule_type = config.get("schedule_type", "-")
+        type_config = config.get(schedule_type, {})
+        if schedule_type == TaskScheduleType.CRONTAB:
             return type_config.get('crontab', '')
-        elif obj.schedule_type == TaskScheduleType.CONTINUOUS:
+        elif schedule_type == TaskScheduleType.CONTINUOUS:
             return "每%s秒" % type_config.get('period', '')
-        elif obj.schedule_type == TaskScheduleType.TIMINGS:
-            return ScheduleTimingType[obj.config[obj.schedule_type]['type']].label
+        elif schedule_type == TaskScheduleType.TIMINGS:
+            return ScheduleTimingType[config[schedule_type]['type']].label
         return '-'
     schedule_sub_type.short_description = '详细'
 
